@@ -11,7 +11,7 @@ export class ManpowerService {
         `SELECT l.*, v.company_name as vendor_name 
          FROM vendor_listings l 
          LEFT JOIN vendors v ON l.vendor_id = v.id 
-         WHERE l.category = $1 AND l.status = $2 
+         WHERE l.category = $1 AND LOWER(l.status) = $2 
          ORDER BY l.created_at DESC`,
         ['Manpower', 'active']
       );

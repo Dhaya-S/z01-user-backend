@@ -11,7 +11,7 @@ export class ListingsService {
         `SELECT l.*, v.company_name as vendor_name, v.business_type as vendor_business_type 
          FROM vendor_listings l 
          LEFT JOIN vendors v ON l.vendor_id = v.id 
-         WHERE l.status = $1 
+         WHERE LOWER(l.status) = $1 
          ORDER BY l.created_at DESC LIMIT 20`,
         ['active']
       );
@@ -27,7 +27,7 @@ export class ListingsService {
         `SELECT l.*, v.company_name as vendor_name, v.business_type as vendor_business_type 
          FROM vendor_listings l 
          LEFT JOIN vendors v ON l.vendor_id = v.id 
-         WHERE l.status = $1 
+         WHERE LOWER(l.status) = $1 
          AND (l.listing_title ILIKE $2 OR l.short_description ILIKE $2 OR l.brand ILIKE $2 OR l.category ILIKE $2) 
          ORDER BY l.created_at DESC`,
         ['active', `%${query}%`]
@@ -41,7 +41,7 @@ export class ListingsService {
   async findByVendor(vendorId: string) {
     try {
       const { rows } = await this.pool.query(
-        'SELECT * FROM vendor_listings WHERE vendor_id = $1 AND status = $2 ORDER BY created_at DESC',
+        'SELECT * FROM vendor_listings WHERE vendor_id = $1 AND LOWER(status) = $2 ORDER BY created_at DESC',
         [vendorId, 'active']
       );
       return rows;

@@ -1,10 +1,19 @@
-import { Controller, Post, UseInterceptors, UploadedFile, BadRequestException, Query } from '@nestjs/common';
+import { Controller, Post, Get, UseInterceptors, UploadedFile, BadRequestException, Query, Res } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
 
 @Controller('upload')
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
+
+  @Get('proxy')
+  async proxyImage(
+    @Query('url') url: string,
+    @Res() res: any
+  ) {
+    if (!url) throw new BadRequestException('No url provided');
+    return this.uploadService.proxyImage(url, res);
+  }
 
   @Post('image')
   @UseInterceptors(FileInterceptor('image'))
@@ -26,3 +35,4 @@ export class UploadController {
     return this.uploadService.saveFile(file, isPrivate === 'true');
   }
 }
+

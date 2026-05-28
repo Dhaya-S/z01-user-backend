@@ -11,6 +11,9 @@ import { VendorsModule } from './vendors/vendors.module';
 import { UploadModule } from './upload/upload.module';
 import { ListingsModule } from './listings/listings.module';
 import { ReviewsModule } from './reviews/reviews.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { CartModule } from './cart/cart.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
   imports: [
@@ -24,6 +27,9 @@ import { ReviewsModule } from './reviews/reviews.module';
     UploadModule,
     ListingsModule,
     ReviewsModule,
+    NotificationsModule,
+    CartModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -16,4 +16,16 @@ export class BookingsController {
     const data = await this.bookingsService.findByUser(userId);
     return { success: true, data };
   }
+
+  @Get('detail/:id')
+  async findById(@Param('id') id: string) {
+    const data = await this.bookingsService.findById(id);
+    return { success: true, data };
+  }
+
+  @Post(':id/cancel')
+  async cancel(@Param('id') id: string, @Body() body: { reason: string }) {
+    const result = await this.bookingsService.cancel(id, body.reason);
+    return result;
+  }
 }

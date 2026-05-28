@@ -22,11 +22,18 @@ export class ReviewsService {
       const { listing_id, user_id, user_name, rating, comment, images } = data;
       const { rows } = await this.pool.query(
         'INSERT INTO reviews (listing_id, user_id, user_name, rating, comment, images) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [listing_id, user_id, user_name, rating, comment, JSON.stringify(images || [])]
+        [
+          parseInt(listing_id) || 0,
+          user_id || 'anonymous',
+          user_name || 'Anonymous',
+          rating || 5,
+          comment || '',
+          JSON.stringify(images || [])
+        ]
       );
       
       // Update listing average rating (optional but recommended)
-      await this.updateListingRating(listing_id);
+      await this.updateListingRating(parseInt(listing_id) || 0);
       
       return rows[0];
     } catch (error) {
@@ -41,7 +48,7 @@ export class ReviewsService {
         'SELECT AVG(rating) as avg_rating FROM reviews WHERE listing_id = $1',
         [listingId]
       );
-      const avg = rows[0].avg_rating || 0;
+      const avg = parseFloat(rows[0].avg_rating) || 0;
       await this.pool.query(
         'UPDATE vendor_listings SET avg_rating = $1 WHERE id = $2',
         [avg, listingId]

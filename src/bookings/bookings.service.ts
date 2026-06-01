@@ -102,10 +102,12 @@ export class BookingsService {
           const subject = 'Booking Canceled - Z01';
           const text = `Hello ${info.company_name || 'Vendor'},\n\nA booking for your listing "${info.listing_title || 'Service'}" has been canceled.\n\nBooking ID: ${id}\nCancellation Reason: ${reason}\n\nPlease check your dashboard for updates.\n\nBest Regards,\nZ01 Team`;
           
-          await this.notificationsService.sendEmail(info.email, subject, text);
-          console.log(`Cancellation email sent to vendor: ${info.email}`);
+          // Fire and forget email so it doesn't block the API response if SMTP hangs
+          this.notificationsService.sendEmail(info.email, subject, text)
+            .then(() => console.log(`Cancellation email sent to vendor: ${info.email}`))
+            .catch(e => console.error('Failed to send cancellation notification email:', e));
         } catch (notifyError) {
-          console.error('Failed to send cancellation notification email:', notifyError);
+          console.error('Failed to initiate cancellation notification email:', notifyError);
         }
       }
 

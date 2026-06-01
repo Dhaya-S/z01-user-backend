@@ -16,24 +16,9 @@ export class WishlistService {
         [userId]
       );
       
-      // Map database snake_case columns to the camelCase properties the flutter app expects
-      const formattedListings = result.rows.map(item => ({
-        id: item.id.toString(),
-        vendorId: item.vendor_id?.toString() ?? '',
-        category: item.category,
-        subCategory: item.category, // using category as subCategory as a fallback
-        listingTitle: item.name,
-        description: item.description,
-        pricePerHour: parseFloat(item.price) || 0,
-        pricePerDay: (parseFloat(item.price) || 0) * 8, // dummy day price
-        images: item.image_url ? [item.image_url] : [],
-        locationAddress: 'India', // dummy location
-        latitude: 20.5937,
-        longitude: 78.9629,
-        status: item.status,
-      }));
-      
-      return formattedListings;
+      // The database rows already contain snake_case columns like listing_title, image_1, price_per_day, etc.
+      // We can just return them directly since they match ListingModel.fromJson expectations.
+      return result.rows;
     } catch (error) {
       console.error('Error fetching wishlist:', error);
       throw new InternalServerErrorException('Failed to fetch wishlist');

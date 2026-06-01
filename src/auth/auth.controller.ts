@@ -16,4 +16,10 @@ export class AuthController {
     const data = await this.authService.login(body);
     return { success: true, data };
   }
+
+  @Post('kyc')
+  async submitKyc(@Body() body: any) {
+    const data = await this.authService.submitKyc(body);
+    return { success: true, data };
+  }
 }

@@ -87,4 +87,64 @@ export class AuthService {
       throw new InternalServerErrorException('Failed to log in');
     }
   }
+
+  async submitKyc(body: any) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Create table if not exists
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS kyc_records (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES users(id),
+          full_name VARCHAR(255),
+          phone VARCHAR(50),
+          email VARCHAR(255),
+          dob VARCHAR(50),
+          address TEXT,
+          status VARCHAR(50) DEFAULT 'completed',
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      const { user_id, full_name, phone, email, dob, address } = body;
+
+      // Check if user exists
+      const existingUser = await client.query('SELECT id FROM users WHERE id = $1', [user_id]);
+      if (existingUser.rows.length === 0) {
+        throw new BadRequestException('User not found');
+      }
+
+      // Check if KYC already exists for user
+      const existingKyc = await client.query('SELECT id FROM kyc_records WHERE user_id = $1', [user_id]);
+      
+      let result;
+      if (existingKyc.rows.length > 0) {
+        // Update
+        const { rows } = await client.query(
+          'UPDATE kyc_records SET full_name = $1, phone = $2, email = $3, dob = $4, address = $5, status = $6 WHERE user_id = $7 RETURNING *',
+          [full_name, phone, email, dob, address, 'completed', user_id]
+        );
+        result = rows[0];
+      } else {
+        // Insert
+        const { rows } = await client.query(
+          'INSERT INTO kyc_records (user_id, full_name, phone, email, dob, address, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+          [user_id, full_name, phone, email, dob, address, 'completed']
+        );
+        result = rows[0];
+      }
+
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error instanceof BadRequestException) throw error;
+      console.error(error);
+      throw new InternalServerErrorException('Failed to submit KYC');
+    } finally {
+      client.release();
+    }
+  }
 }

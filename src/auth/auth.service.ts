@@ -97,7 +97,7 @@ export class AuthService {
       await client.query(`
         CREATE TABLE IF NOT EXISTS kyc_records (
           id SERIAL PRIMARY KEY,
-          user_id INTEGER REFERENCES users(id),
+          user_id UUID REFERENCES users(id),
           full_name VARCHAR(255),
           phone VARCHAR(50),
           email VARCHAR(255),

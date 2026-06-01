@@ -35,10 +35,13 @@ export class BookingsService {
           const subject = 'New Booking Received - Z01';
           const text = `Hello ${vendor.company_name},\n\nYou have received a new booking for "${vendor.listing_title}".\n\nBooking Details:\nBooking ID: ${booking.id}\nStart Date: ${start_date}\nEnd Date: ${end_date}\nTotal Amount: ${total_amount}\n\nPlease check your dashboard for more details.\n\nBest Regards,\nZ01 Team`;
           
-          await this.notificationsService.sendEmail(vendor.email, subject, text);
+          // Fire and forget so it doesn't block the API response
+          this.notificationsService.sendEmail(vendor.email, subject, text)
+            .then(() => console.log(`New booking email sent to vendor: ${vendor.email}`))
+            .catch(e => console.error('Failed to send notification email:', e));
         }
       } catch (notifyError) {
-        console.error('Failed to send notification email:', notifyError);
+        console.error('Failed to initiate notification email:', notifyError);
         // We don't throw error here to not break the booking creation flow
       }
 

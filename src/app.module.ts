@@ -14,6 +14,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { CartModule } from './cart/cart.module';
 import { ReportsModule } from './reports/reports.module';
+import { WishlistModule } from './wishlist/wishlist.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ReportsModule } from './reports/reports.module';
     NotificationsModule,
     CartModule,
     ReportsModule,
+    WishlistModule,
   ],
   controllers: [AppController],
   providers: [AppService],

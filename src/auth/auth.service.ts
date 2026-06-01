@@ -147,4 +147,39 @@ export class AuthService {
       client.release();
     }
   }
+
+  async updateProfile(body: any) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Ensure columns exist
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS phone VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS address TEXT;
+      `);
+
+      const { user_id, name, email, phone, address } = body;
+
+      const { rows } = await client.query(
+        'UPDATE users SET name = $1, email = $2, phone = $3, address = $4 WHERE id = $5 RETURNING id, name, email, phone, address',
+        [name, email, phone, address, user_id]
+      );
+
+      if (rows.length === 0) {
+        throw new BadRequestException('User not found');
+      }
+
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error instanceof BadRequestException) throw error;
+      console.error(error);
+      throw new InternalServerErrorException('Failed to update profile');
+    } finally {
+      client.release();
+    }
+  }
 }

@@ -22,4 +22,10 @@ export class AuthController {
     const data = await this.authService.submitKyc(body);
     return { success: true, data };
   }
+
+  @Post('update-profile')
+  async updateProfile(@Body() body: any) {
+    const data = await this.authService.updateProfile(body);
+    return { success: true, data };
+  }
 }

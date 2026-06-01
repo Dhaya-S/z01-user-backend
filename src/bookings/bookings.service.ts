@@ -51,7 +51,7 @@ export class BookingsService {
   async findByUser(userId: string) {
     try {
       const { rows } = await this.pool.query(
-        'SELECT b.*, v.listing_title as listing_name, v.category as listing_type, v.image_1, v.location_address, v.latitude, v.longitude, ven.company_name as vendor_company_name, ven.contact_person as vendor_contact_person, ven.phone as vendor_phone FROM bookings b LEFT JOIN vendor_listings v ON b.listing_id = v.id LEFT JOIN vendors ven ON v.vendor_id = ven.id WHERE b.user_id = $1 ORDER BY b.created_at DESC',
+        'SELECT b.*, v.listing_title as listing_name, v.category as listing_type, v.image_1, v.location_address, v.location_lat, v.location_lng, ven.company_name as vendor_company_name, ven.contact_person as vendor_contact_person, ven.phone as vendor_phone FROM bookings b LEFT JOIN vendor_listings v ON b.listing_id = v.id LEFT JOIN vendors ven ON v.vendor_id = ven.id WHERE b.user_id = $1 ORDER BY b.created_at DESC',
         [userId]
       );
       return rows;
@@ -63,7 +63,7 @@ export class BookingsService {
   async findById(id: string) {
     try {
       const { rows } = await this.pool.query(
-        'SELECT b.*, v.listing_title as listing_name, v.category as listing_type, v.image_1, v.location_address, v.latitude, v.longitude, ven.company_name as vendor_company_name, ven.contact_person as vendor_contact_person, ven.phone as vendor_phone FROM bookings b LEFT JOIN vendor_listings v ON b.listing_id = v.id LEFT JOIN vendors ven ON v.vendor_id = ven.id WHERE b.id = $1',
+        'SELECT b.*, v.listing_title as listing_name, v.category as listing_type, v.image_1, v.location_address, v.location_lat, v.location_lng, ven.company_name as vendor_company_name, ven.contact_person as vendor_contact_person, ven.phone as vendor_phone FROM bookings b LEFT JOIN vendor_listings v ON b.listing_id = v.id LEFT JOIN vendors ven ON v.vendor_id = ven.id WHERE b.id = $1',
         [id]
       );
       return rows[0];

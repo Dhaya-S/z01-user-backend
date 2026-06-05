@@ -23,7 +23,7 @@ export class BookingsService {
       // Send notification to vendor
       try {
         const vendorData = await this.pool.query(
-          `SELECT v.email, v.company_name, l.listing_title 
+          `SELECT v.user_id, v.email, v.company_name, l.listing_title 
            FROM vendor_listings l 
            JOIN vendors v ON l.vendor_id = v.id 
            WHERE l.id = $1`,
@@ -35,10 +35,12 @@ export class BookingsService {
           const subject = 'New Booking Received - Z01';
           const text = `Hello ${vendor.company_name},\n\nYou have received a new booking for "${vendor.listing_title}".\n\nBooking Details:\nBooking ID: ${booking.id}\nStart Date: ${start_date}\nEnd Date: ${end_date}\nTotal Amount: ${total_amount}\n\nPlease check your dashboard for more details.\n\nBest Regards,\nZ01 Team`;
           
-          // Fire and forget so it doesn't block the API response
-          this.notificationsService.sendEmail(vendor.email, subject, text)
-            .then(() => console.log(`New booking email sent to vendor: ${vendor.email}`))
-            .catch(e => console.error('Failed to send notification email:', e));
+          if (vendor.user_id) {
+            // Fire and forget
+            this.notificationsService.sendNotificationToUser(vendor.user_id, subject, text)
+              .then(() => console.log(`New booking push sent to vendor user: ${vendor.user_id}`))
+              .catch(e => console.error('Failed to send notification:', e));
+          }
         }
       } catch (notifyError) {
         console.error('Failed to initiate notification email:', notifyError);
@@ -92,25 +94,25 @@ export class BookingsService {
 
       // 2. Fetch vendor details for notification
       const { rows: vendorInfo } = await this.pool.query(
-        `SELECT v.email, v.company_name, l.listing_title 
+        `SELECT v.user_id, v.email, v.company_name, l.listing_title 
          FROM vendor_listings l 
          LEFT JOIN vendors v ON l.vendor_id = v.id 
          WHERE l.id = $1`,
         [listingId]
       );
 
-      if (vendorInfo.length > 0 && vendorInfo[0].email) {
+      if (vendorInfo.length > 0 && vendorInfo[0].user_id) {
         const info = vendorInfo[0];
         try {
           const subject = 'Booking Canceled - Z01';
           const text = `Hello ${info.company_name || 'Vendor'},\n\nA booking for your listing "${info.listing_title || 'Service'}" has been canceled.\n\nBooking ID: ${id}\nCancellation Reason: ${reason}\n\nPlease check your dashboard for updates.\n\nBest Regards,\nZ01 Team`;
           
           // Fire and forget email so it doesn't block the API response if SMTP hangs
-          this.notificationsService.sendEmail(info.email, subject, text)
-            .then(() => console.log(`Cancellation email sent to vendor: ${info.email}`))
-            .catch(e => console.error('Failed to send cancellation notification email:', e));
+          this.notificationsService.sendNotificationToUser(info.user_id, subject, text)
+            .then(() => console.log(`Cancellation push sent to vendor user: ${info.user_id}`))
+            .catch(e => console.error('Failed to send cancellation notification:', e));
         } catch (notifyError) {
-          console.error('Failed to initiate cancellation notification email:', notifyError);
+          console.error('Failed to initiate cancellation notification:', notifyError);
         }
       }
 

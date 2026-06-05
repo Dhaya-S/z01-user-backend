@@ -88,6 +88,45 @@ export class AuthService {
     }
   }
 
+  async googleLogin(body: any) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const { email, name, googleId } = body;
+      
+      let existingUser = await client.query('SELECT id, name, email, user_type, created_at FROM users WHERE email = $1', [email]);
+      
+      let user;
+      if (existingUser.rows.length > 0) {
+        user = existingUser.rows[0];
+      } else {
+        const { rows } = await client.query(
+          'INSERT INTO users (name, email, password, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, user_type, created_at',
+          [name || email, email, 'google_sso_' + (googleId || Date.now()), 'customer']
+        );
+        user = rows[0];
+      }
+
+      let vendorId = null;
+      if (user.user_type === 'vendor') {
+        const vendorResult = await client.query('SELECT id FROM vendors WHERE user_id = $1', [user.id]);
+        vendorId = vendorResult.rows[0]?.id;
+      }
+
+      await client.query('COMMIT');
+      return {
+        ...user,
+        vendorId
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error(error);
+      throw new InternalServerErrorException('Failed to log in with Google');
+    } finally {
+      client.release();
+    }
+  }
+
   async submitKyc(body: any) {
     const client = await this.pool.connect();
     try {

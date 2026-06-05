@@ -17,6 +17,12 @@ export class AuthController {
     return { success: true, data };
   }
 
+  @Post('google')
+  async googleLogin(@Body() body: any) {
+    const data = await this.authService.googleLogin(body);
+    return { success: true, data };
+  }
+
   @Post('kyc')
   async submitKyc(@Body() body: any) {
     const data = await this.authService.submitKyc(body);

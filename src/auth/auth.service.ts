@@ -16,9 +16,19 @@ export class AuthService {
   }
 
   async sendOtp(body: any) {
-    const { mobile } = body;
+    const { mobile, is_register } = body;
     if (!mobile) throw new BadRequestException('Mobile number is required');
     const phone = this.normalizePhone(mobile);
+
+    // Check if user exists BEFORE sending OTP
+    const userResult = await this.pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
+    const userExists = userResult.rows.length > 0;
+
+    if (is_register && userExists) {
+      throw new UnauthorizedException('Number already registered. Please log in.');
+    } else if (!is_register && !userExists) {
+      throw new UnauthorizedException('Account not found. Please sign up.');
+    }
 
     try {
       const response = await axios.post(

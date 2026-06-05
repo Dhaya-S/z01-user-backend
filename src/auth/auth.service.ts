@@ -1,5 +1,6 @@
 import { Injectable, Inject, BadRequestException, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { Pool } from 'pg';
+import axios from 'axios';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -9,94 +10,143 @@ export class AuthService {
     private readonly notificationsService: NotificationsService
   ) {}
 
-  async register(body: any) {
-    const client = await this.pool.connect();
+  normalizePhone(phone: string): string {
+    const digits = phone.replace(/\D/g, "");
+    return digits.slice(-10);
+  }
+
+  async sendOtp(body: any) {
+    const { mobile } = body;
+    if (!mobile) throw new BadRequestException('Mobile number is required');
+    const phone = this.normalizePhone(mobile);
+
     try {
-      await client.query('BEGIN');
-      const { name, email, password, user_type = 'customer', metadata } = body;
-      
-      const existing = await client.query('SELECT id FROM users WHERE email = $1', [email]);
-      if (existing.rows.length > 0) {
-        throw new BadRequestException('User already exists');
-      }
-      
-      const { rows: userRows } = await client.query(
-        'INSERT INTO users (name, email, password, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, user_type, created_at',
-        [name || email, email, password, user_type]
+      const response = await axios.post(
+        "https://www.fast2sms.com/dev/otp/send",
+        {
+          mobile: phone,
+          otp_id: process.env.FAST2SMS_OTP_ID,
+        },
+        {
+          headers: {
+            authorization: process.env.FAST2SMS_API_KEY,
+            "Content-Type": "application/json",
+            accept: "application/json",
+          },
+        },
       );
-      
-      const userId = userRows[0].id;
-      let vendorId = null;
-      
-      // Create Vendor record only if user_type is 'vendor'
-      if (user_type === 'vendor') {
-        const { rows: vendorRows } = await client.query(
-          'INSERT INTO vendors (user_id, company_name, contact_person, phone, email) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-          [
-            userId,
-            metadata?.companyName || name,
-            metadata?.contactPerson || name,
-            metadata?.phone,
-            email
-          ]
-        );
-        vendorId = vendorRows[0].id;
+
+      console.log("FAST2SMS SEND:", response.data);
+
+      if (!response.data.request_id) {
+        throw new UnauthorizedException("OTP send failed");
       }
 
-      await client.query('COMMIT');
+      const requestId = response.data.request_id;
 
-      // Send a welcome push notification using OneSignal
-      this.notificationsService.sendNotificationToUser(
-        userId,
-        'Welcome to Studio Rental!',
-        'Your account has been created successfully. Explore our studios now!'
+      // Delete existing sessions for this phone
+      await this.pool.query('DELETE FROM otps WHERE phone = $1', [phone]);
+
+      // Create new session
+      await this.pool.query(
+        'INSERT INTO otps (phone, session_id, created_at) VALUES ($1, $2, NOW())',
+        [phone, requestId]
       );
 
       return {
-        ...userRows[0],
-        vendorId
+        success: true,
+        requestId,
       };
-    } catch (error) {
-      await client.query('ROLLBACK');
-      if (error instanceof BadRequestException) throw error;
-      throw new InternalServerErrorException('Failed to register user');
-    } finally {
-      client.release();
+    } catch (e: any) {
+      console.log(e.response?.data || e.message);
+      throw new InternalServerErrorException("Failed to send OTP");
     }
   }
 
-  async login(body: any) {
+  async verifyOtp(body: any) {
+    const { mobile, otp, user_type = 'customer', required_role } = body;
+    if (!mobile || !otp) throw new BadRequestException('Mobile and OTP are required');
+    
+    const phone = this.normalizePhone(mobile);
+
+    const sessionResult = await this.pool.query(
+      'SELECT session_id FROM otps WHERE phone = $1 ORDER BY created_at DESC LIMIT 1',
+      [phone]
+    );
+
+    if (sessionResult.rows.length === 0) {
+      throw new UnauthorizedException("OTP session not found");
+    }
+
     try {
-      const { email, password, required_role } = body;
-      
-      let query = 'SELECT id, name, email, user_type, created_at FROM users WHERE email = $1 AND password = $2';
-      const params = [email, password];
+      const response = await axios.post(
+        "https://www.fast2sms.com/dev/otp/verify",
+        {
+          mobile: phone,
+          otp,
+          otp_id: process.env.FAST2SMS_OTP_ID,
+        },
+        {
+          headers: {
+            authorization: process.env.FAST2SMS_API_KEY,
+            "Content-Type": "application/json",
+            accept: "application/json",
+          },
+        },
+      );
 
-      if (required_role) {
-        query += ' AND user_type = $3';
-        params.push(required_role);
+      console.log("FAST2SMS VERIFY:", response.data);
+
+      if (response.data.return !== true) {
+        throw new UnauthorizedException(response.data.message || "Invalid OTP");
       }
 
-      const { rows } = await this.pool.query(query, params);
-      
-      if (rows.length === 0) {
-        throw new UnauthorizedException('Invalid credentials or insufficient permissions');
-      }
+      await this.pool.query('DELETE FROM otps WHERE phone = $1', [phone]);
 
-      // If it's a vendor, fetch the vendorId
+      let userResult = await this.pool.query('SELECT id, name, email, phone, user_type, created_at FROM users WHERE phone = $1', [phone]);
+      let user = userResult.rows[0];
       let vendorId = null;
-      if (rows[0].user_type === 'vendor') {
-        const vendorResult = await this.pool.query('SELECT id FROM vendors WHERE user_id = $1', [rows[0].id]);
-        vendorId = vendorResult.rows[0]?.id;
+
+      if (!user) {
+        // Create new user
+        const newUserResult = await this.pool.query(
+          'INSERT INTO users (phone, user_type) VALUES ($1, $2) RETURNING id, name, email, phone, user_type, created_at',
+          [phone, user_type]
+        );
+        user = newUserResult.rows[0];
+        
+        if (user_type === 'vendor') {
+          const vendorResult = await this.pool.query(
+            'INSERT INTO vendors (user_id, phone) VALUES ($1, $2) RETURNING id',
+            [user.id, phone]
+          );
+          vendorId = vendorResult.rows[0].id;
+        }
+
+        // Send welcome notification
+        this.notificationsService.sendNotificationToUser(
+          user.id,
+          'Welcome to Studio Rental!',
+          'Your account has been created successfully. Explore our studios now!'
+        );
+      } else {
+        if (required_role && user.user_type !== required_role) {
+          throw new UnauthorizedException('Insufficient permissions');
+        }
+        if (user.user_type === 'vendor') {
+          const vendorResult = await this.pool.query('SELECT id FROM vendors WHERE user_id = $1', [user.id]);
+          vendorId = vendorResult.rows[0]?.id;
+        }
       }
 
       return {
-        ...rows[0],
+        ...user,
         vendorId
       };
-    } catch (error) {
-      if (error instanceof UnauthorizedException) throw error;
-      throw new InternalServerErrorException('Failed to log in');
+    } catch (e: any) {
+      if (e instanceof UnauthorizedException) throw e;
+      console.log(e.response?.data || e.message);
+      throw new InternalServerErrorException("OTP verification failed");
     }
   }
 

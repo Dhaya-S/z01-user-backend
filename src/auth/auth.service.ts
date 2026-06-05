@@ -137,12 +137,14 @@ export class AuthService {
           vendorId = vendorResult.rows[0].id;
         }
 
-        // Send welcome notification
-        this.notificationsService.sendNotificationToUser(
-          user.id,
-          'Welcome to Studio Rental!',
-          'Your account has been created successfully. Explore our studios now!'
-        );
+        // Send welcome notification after 10 seconds to allow frontend to login to OneSignal
+        setTimeout(() => {
+          this.notificationsService.sendNotificationToUser(
+            user.id,
+            'Welcome to Studio Rental!',
+            'Your account has been created successfully. Explore our studios now!'
+          ).catch(e => console.error('Failed to send welcome notification:', e));
+        }, 10000);
       } else {
         if (!user) {
           throw new UnauthorizedException("User not found. Please sign up first.");

@@ -64,7 +64,7 @@ export class AuthService {
   }
 
   async verifyOtp(body: any) {
-    const { mobile, otp, user_type = 'customer', required_role } = body;
+    const { mobile, otp, user_type = 'customer', required_role, is_register, name, email } = body;
     if (!mobile || !otp) throw new BadRequestException('Mobile and OTP are required');
     
     const phone = this.normalizePhone(mobile);
@@ -107,18 +107,22 @@ export class AuthService {
       let user = userResult.rows[0];
       let vendorId = null;
 
-      if (!user) {
+      if (is_register) {
+        if (user) {
+          throw new UnauthorizedException("User already exists. Please login instead.");
+        }
+        
         // Create new user
         const newUserResult = await this.pool.query(
-          'INSERT INTO users (phone, user_type) VALUES ($1, $2) RETURNING id, name, email, phone, user_type, created_at',
-          [phone, user_type]
+          'INSERT INTO users (phone, name, email, user_type) VALUES ($1, $2, $3, $4) RETURNING id, name, email, phone, user_type, created_at',
+          [phone, name || null, email || null, user_type]
         );
         user = newUserResult.rows[0];
         
         if (user_type === 'vendor') {
           const vendorResult = await this.pool.query(
-            'INSERT INTO vendors (user_id, phone) VALUES ($1, $2) RETURNING id',
-            [user.id, phone]
+            'INSERT INTO vendors (user_id, phone, email, contact_person) VALUES ($1, $2, $3, $4) RETURNING id',
+            [user.id, phone, email || null, name || null]
           );
           vendorId = vendorResult.rows[0].id;
         }
@@ -130,6 +134,10 @@ export class AuthService {
           'Your account has been created successfully. Explore our studios now!'
         );
       } else {
+        if (!user) {
+          throw new UnauthorizedException("User not found. Please sign up first.");
+        }
+        
         if (required_role && user.user_type !== required_role) {
           throw new UnauthorizedException('Insufficient permissions');
         }

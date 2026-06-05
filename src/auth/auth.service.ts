@@ -221,4 +221,39 @@ export class AuthService {
       client.release();
     }
   }
+
+  async updateLocation(body: any) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      await client.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS address TEXT,
+        ADD COLUMN IF NOT EXISTS latitude DOUBLE PRECISION,
+        ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+      `);
+
+      const { user_id, address, lat, lng } = body;
+
+      const { rows } = await client.query(
+        'UPDATE users SET address = $1, latitude = $2, longitude = $3 WHERE id = $4 RETURNING id, address, latitude, longitude',
+        [address, lat, lng, user_id]
+      );
+
+      if (rows.length === 0) {
+        throw new BadRequestException('User not found');
+      }
+
+      await client.query('COMMIT');
+      return rows[0];
+    } catch (error) {
+      await client.query('ROLLBACK');
+      if (error instanceof BadRequestException) throw error;
+      console.error(error);
+      throw new InternalServerErrorException('Failed to update location');
+    } finally {
+      client.release();
+    }
+  }
 }

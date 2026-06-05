@@ -34,4 +34,10 @@ export class AuthController {
     const data = await this.authService.updateProfile(body);
     return { success: true, data };
   }
+
+  @Post('update-location')
+  async updateLocation(@Body() body: any) {
+    const data = await this.authService.updateLocation(body);
+    return { success: true, data };
+  }
 }

@@ -6,7 +6,7 @@ export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
   private readonly ONESIGNAL_APP_ID = '8ba49c7c-97fb-4410-8354-ccb8dd2abfb5';
-  private readonly ONESIGNAL_REST_API_KEY = 'os_v2_app_rosjy7ex7ncbba2uzs4n2kv7wuvco7hwrv6e2s4nhoogwlbha3zmo5p4fc3qtvb2icvbgm32ica7rbmsaxfiexz4yf4mdmf3e6qn62i';
+  private readonly ONESIGNAL_REST_API_KEY = 'os_v2_app_rosjy7ex7ncbba2uzs4n2kv7wusvjgfhlsne344nblgm2654mk446tctfvjy5yo62zwl7ta7aps24zj3cungfnpzh3zqx3uqe7qdpcy';
 
   /**
    * Send a push notification to a specific user via OneSignal

@@ -1,36 +1,72 @@
-import { Injectable } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Injectable, Logger } from '@nestjs/common';
+import axios from 'axios';
 
 @Injectable()
 export class NotificationsService {
-  private transporter;
+  private readonly logger = new Logger(NotificationsService.name);
 
-  constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+  private readonly ONESIGNAL_APP_ID = '8ba49c7c-97fb-4410-8354-ccb8dd2abfb5';
+  private readonly ONESIGNAL_REST_API_KEY = 'gn6cay7cluuimbihvxaarxzpc';
+
+  /**
+   * Send a push notification to a specific user via OneSignal
+   * @param userId The database user ID of the recipient
+   * @param title The title of the notification
+   * @param message The body message of the notification
+   */
+  async sendNotificationToUser(userId: string, title: string, message: string): Promise<boolean> {
+    try {
+      const response = await axios.post(
+        'https://onesignal.com/api/v1/notifications',
+        {
+          app_id: this.ONESIGNAL_APP_ID,
+          include_external_user_ids: [userId],
+          headings: { en: title },
+          contents: { en: message },
+          channel_for_external_user_ids: 'push'
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${this.ONESIGNAL_REST_API_KEY}`,
+          },
+        }
+      );
+
+      this.logger.log(`OneSignal Notification sent to user ${userId}: ${JSON.stringify(response.data)}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Failed to send OneSignal notification to user ${userId}`, error.response?.data || error.message);
+      return false;
+    }
   }
 
-  async sendEmail(to: string, subject: string, text: string, html?: string) {
+  /**
+   * Broadcast a notification to all subscribed users
+   */
+  async broadcastNotification(title: string, message: string): Promise<boolean> {
     try {
-      const info = await this.transporter.sendMail({
-        from: `"${process.env.APP_NAME || 'Z01'}" <${process.env.FROM_EMAIL}>`,
-        to,
-        subject,
-        text,
-        html,
-      });
-      console.log('Message sent: %s', info.messageId);
-      return info;
+      const response = await axios.post(
+        'https://onesignal.com/api/v1/notifications',
+        {
+          app_id: this.ONESIGNAL_APP_ID,
+          included_segments: ['Subscribed Users'],
+          headings: { en: title },
+          contents: { en: message },
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Basic ${this.ONESIGNAL_REST_API_KEY}`,
+          },
+        }
+      );
+
+      this.logger.log(`OneSignal Broadcast sent: ${JSON.stringify(response.data)}`);
+      return true;
     } catch (error) {
-      console.error('Error sending email:', error);
-      throw error;
+      this.logger.error(`Failed to broadcast OneSignal notification`, error.response?.data || error.message);
+      return false;
     }
   }
 }

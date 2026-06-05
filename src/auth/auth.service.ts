@@ -1,9 +1,13 @@
 import { Injectable, Inject, BadRequestException, UnauthorizedException, InternalServerErrorException } from '@nestjs/common';
 import { Pool } from 'pg';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AuthService {
-  constructor(@Inject('DATABASE_POOL') private pool: Pool) {}
+  constructor(
+    @Inject('DATABASE_POOL') private pool: Pool,
+    private readonly notificationsService: NotificationsService
+  ) {}
 
   async register(body: any) {
     const client = await this.pool.connect();
@@ -40,6 +44,14 @@ export class AuthService {
       }
 
       await client.query('COMMIT');
+
+      // Send a welcome push notification using OneSignal
+      this.notificationsService.sendNotificationToUser(
+        userId,
+        'Welcome to Studio Rental!',
+        'Your account has been created successfully. Explore our studios now!'
+      );
+
       return {
         ...userRows[0],
         vendorId

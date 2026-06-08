@@ -18,36 +18,40 @@ export class PaymentsService {
     }
   }
 
-  async createOrderForBooking(bookingId: string) {
+  async createOrderForBooking(bookingIdsString: string) {
     if (!this.razorpay) throw new InternalServerErrorException('Razorpay is not configured');
-
     try {
-      // 1. Fetch booking and listing details
-      const { rows } = await this.pool.query(
-        `SELECT b.*, l.deposit_percentage, l.deposit_amount as vendor_specified_deposit 
-         FROM bookings b 
-         JOIN vendor_listings l ON b.listing_id = l.id 
-         WHERE b.id = $1`,
-        [bookingId]
-      );
+      const bookingIds = bookingIdsString.split(',').map(id => id.trim());
+      let totalAmountToCharge = 0;
 
-      if (rows.length === 0) throw new NotFoundException('Booking not found');
-      
-      const booking = rows[0];
-      
-      let vendorDepositAmount = 0;
-      if (booking.vendor_specified_deposit && Number(booking.vendor_specified_deposit) > 0) {
-        // Use the exact deposit amount specified by the vendor in the listing
-        vendorDepositAmount = Number(booking.vendor_specified_deposit);
-      } else {
-        // Fallback to percentage calculation if specific amount isn't set
-        const depositPercentage = booking.deposit_percentage || 100;
-        vendorDepositAmount = (Number(booking.total_amount) * Number(depositPercentage)) / 100;
+      // Process each booking
+      const depositAmountsMap = new Map<string, number>();
+
+      for (const bId of bookingIds) {
+        const { rows } = await this.pool.query(
+          `SELECT b.*, l.deposit_amount as vendor_specified_deposit 
+           FROM bookings b 
+           JOIN vendor_listings l ON b.listing_id = l.id 
+           WHERE b.id = $1`,
+          [bId]
+        );
+
+        if (rows.length === 0) continue;
+        const booking = rows[0];
+        
+        let vendorDepositAmount = 0;
+        if (booking.vendor_specified_deposit && Number(booking.vendor_specified_deposit) > 0) {
+          vendorDepositAmount = Number(booking.vendor_specified_deposit);
+        } else {
+          const depositPercentage = booking.deposit_percentage || 100;
+          vendorDepositAmount = (Number(booking.total_amount) * Number(depositPercentage)) / 100;
+        }
+        
+        depositAmountsMap.set(bId, vendorDepositAmount);
+        totalAmountToCharge += vendorDepositAmount; // ONLY charge deposit amount
       }
-      
-      // Add 10% platform fee
-      const platformFee = vendorDepositAmount * 0.10;
-      const totalAmountToCharge = vendorDepositAmount; // User pays ONLY the deposit amount
+
+      if (totalAmountToCharge === 0) throw new NotFoundException('Bookings not found');
       
       const amountInPaise = Math.round(totalAmountToCharge * 100);
 
@@ -55,25 +59,24 @@ export class PaymentsService {
       const options = {
         amount: amountInPaise,
         currency: 'INR',
-        receipt: `booking_${bookingId}`,
+        receipt: `cart_${bookingIds[0]}`,
       };
 
       const order = await this.razorpay.orders.create(options);
 
-      // 3. Update booking with order details
-      // Save vendor's portion as deposit_amount so we know what to transfer
-      await this.pool.query(
-        'UPDATE bookings SET deposit_amount = $1, razorpay_order_id = $2 WHERE id = $3',
-        [vendorDepositAmount, order.id, bookingId]
-      );
+      // 3. Update all bookings with order details
+      for (const bId of bookingIds) {
+        const vendorDepositAmount = depositAmountsMap.get(bId) || 0;
+        await this.pool.query(
+          'UPDATE bookings SET deposit_amount = $1, razorpay_order_id = $2 WHERE id = $3',
+          [vendorDepositAmount, order.id, bId]
+        );
+      }
 
       return {
         success: true,
         orderId: order.id,
         amount: order.amount,
-        currency: order.currency,
-        depositAmount: vendorDepositAmount,
-        platformFee
       };
     } catch (error) {
       console.error('Error creating Razorpay order:', error);
@@ -172,9 +175,9 @@ export class PaymentsService {
       if (!booking.razorpay_payment_id) throw new BadRequestException('No payment found for this booking');
       if (!booking.razorpay_account_id) throw new BadRequestException('Vendor has no linked Razorpay account');
 
-      // Transfer 90% of the vendor's deposit amount to the vendor.
-      // The remaining 10% is kept as the platform fee in the admin account.
-      const transferAmount = (Number(booking.deposit_amount) * 90) / 100;
+      // Transfer 100% of the vendor's deposit amount to the vendor.
+      // The 10% platform fee was collected on top of this and remains in the admin account.
+      const transferAmount = Number(booking.deposit_amount);
       const transferInPaise = Math.round(transferAmount * 100);
 
       const holdUntil = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000); // 7 days from now in unix seconds

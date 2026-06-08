@@ -80,7 +80,7 @@ export class PaymentsService {
       };
     } catch (error) {
       console.error('Error creating Razorpay order:', error);
-      throw new InternalServerErrorException('Failed to create payment order');
+      throw new InternalServerErrorException(error?.message || error?.error?.description || 'Failed to create payment order');
     }
   }
 

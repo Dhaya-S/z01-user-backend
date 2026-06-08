@@ -7,15 +7,11 @@ import * as crypto from 'crypto';
 export class PaymentsService {
   private razorpay: any;
 
-  constructor(@Inject('DATABASE_POOL') private pool: Pool) {
-    if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-      this.razorpay = new Razorpay({
-        key_id: process.env.RAZORPAY_KEY_ID,
-        key_secret: process.env.RAZORPAY_KEY_SECRET,
-      });
-    } else {
-      console.warn('Razorpay keys are missing. Payment features will not work correctly.');
-    }
+  constructor(
+    @Inject('DATABASE_POOL') private pool: Pool,
+    @Inject('RAZORPAY_INSTANCE') private razorpayInstance: any
+  ) {
+    this.razorpay = razorpayInstance;
   }
 
   async createOrderForBooking(bookingIdsString: string) {

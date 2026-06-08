@@ -59,7 +59,7 @@ export class PaymentsService {
       const options = {
         amount: amountInPaise,
         currency: 'INR',
-        receipt: `cart_${bookingIds[0]}`,
+        receipt: `cart_${bookingIds[0]}`.substring(0, 40),
       };
 
       const order = await this.razorpay.orders.create(options);

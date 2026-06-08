@@ -47,7 +47,7 @@ export class PaymentsService {
       
       // Add 10% platform fee
       const platformFee = vendorDepositAmount * 0.10;
-      const totalAmountToCharge = vendorDepositAmount + platformFee;
+      const totalAmountToCharge = vendorDepositAmount; // User pays ONLY the deposit amount
       
       const amountInPaise = Math.round(totalAmountToCharge * 100);
 
@@ -172,9 +172,9 @@ export class PaymentsService {
       if (!booking.razorpay_payment_id) throw new BadRequestException('No payment found for this booking');
       if (!booking.razorpay_account_id) throw new BadRequestException('Vendor has no linked Razorpay account');
 
-      // Transfer 100% of the vendor's deposit amount to the vendor.
-      // The 10% platform fee was collected on top of this and remains in the admin account.
-      const transferAmount = Number(booking.deposit_amount);
+      // Transfer 90% of the vendor's deposit amount to the vendor.
+      // The remaining 10% is kept as the platform fee in the admin account.
+      const transferAmount = (Number(booking.deposit_amount) * 90) / 100;
       const transferInPaise = Math.round(transferAmount * 100);
 
       const holdUntil = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000); // 7 days from now in unix seconds

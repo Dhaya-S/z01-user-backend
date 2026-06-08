@@ -11,11 +11,11 @@ export class BookingsService {
 
   async create(body: any) {
     try {
-      const { user_id, listing_id, start_date, end_date, total_amount, status } = body;
+      const { user_id, listing_id, start_date, end_date, total_amount, status, deposit_amount } = body;
       
       const { rows } = await this.pool.query(
-        'INSERT INTO bookings (user_id, listing_id, start_date, end_date, total_amount, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-        [user_id, listing_id, start_date, end_date, total_amount, status || 'pending']
+        'INSERT INTO bookings (user_id, listing_id, start_date, end_date, total_amount, status, deposit_amount) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+        [user_id, listing_id, start_date, end_date, total_amount, status || 'pending', deposit_amount || 0]
       );
 
       const booking = rows[0];

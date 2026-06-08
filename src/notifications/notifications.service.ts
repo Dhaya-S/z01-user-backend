@@ -13,22 +13,29 @@ export class NotificationsService {
    * @param userId The database user ID of the recipient
    * @param title The title of the notification
    * @param message The body message of the notification
+   * @param data Optional custom data payload
    */
-  async sendNotificationToUser(userId: string, title: string, message: string): Promise<boolean> {
+  async sendNotificationToUser(userId: string, title: string, message: string, data?: any): Promise<boolean> {
     try {
+      const payload: any = {
+        app_id: process.env.ONESIGNAL_APP_ID,
+        include_external_user_ids: [userId],
+        headings: { en: title },
+        contents: { en: message },
+        channel_for_external_user_ids: 'push'
+      };
+
+      if (data) {
+        payload.data = data;
+      }
+
       const response = await axios.post(
         'https://onesignal.com/api/v1/notifications',
-        {
-          app_id: this.ONESIGNAL_APP_ID,
-          include_external_user_ids: [userId],
-          headings: { en: title },
-          contents: { en: message },
-          channel_for_external_user_ids: 'push'
-        },
+        payload,
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Basic ${this.ONESIGNAL_REST_API_KEY}`,
+            'Authorization': `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
           },
         }
       );
@@ -49,7 +56,7 @@ export class NotificationsService {
       const response = await axios.post(
         'https://onesignal.com/api/v1/notifications',
         {
-          app_id: this.ONESIGNAL_APP_ID,
+          app_id: process.env.ONESIGNAL_APP_ID,
           included_segments: ['Subscribed Users'],
           headings: { en: title },
           contents: { en: message },
@@ -57,7 +64,7 @@ export class NotificationsService {
         {
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Basic ${this.ONESIGNAL_REST_API_KEY}`,
+            'Authorization': `Basic ${process.env.ONESIGNAL_REST_API_KEY}`,
           },
         }
       );

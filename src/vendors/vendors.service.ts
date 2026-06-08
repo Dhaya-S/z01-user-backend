@@ -1,9 +1,13 @@
 import { Injectable, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { Pool } from 'pg';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class VendorsService {
-  constructor(@Inject('DATABASE_POOL') private pool: Pool) {}
+  constructor(
+    @Inject('DATABASE_POOL') private pool: Pool,
+    private readonly paymentsService: PaymentsService
+  ) {}
 
   async updateDetails(vendorId: string, details: any) {
     try {
@@ -39,11 +43,19 @@ export class VendorsService {
           [vendorId, accountHolderName, bankName, accountNumber, ifscCode, chequeFile]
         );
       }
+
+      // After updating bank details, create Razorpay Linked Account
+      const vendorData = await this.pool.query('SELECT * FROM vendors WHERE id = $1', [vendorId]);
+      if (vendorData.rows.length > 0) {
+         await this.paymentsService.createLinkedAccount(vendorId, bankDetails, vendorData.rows[0]);
+      }
+
       return result.rows[0];
     } catch (error) {
       throw new InternalServerErrorException('Failed to update bank details');
     }
   }
+
 
   async uploadDocuments(vendorId: string, documents: any) {
     try {

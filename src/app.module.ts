@@ -15,6 +15,8 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { CartModule } from './cart/cart.module';
 import { ReportsModule } from './reports/reports.module';
 import { WishlistModule } from './wishlist/wishlist.module';
+import { PaymentsModule } from './payments/payments.module';
+import { CronModule } from './cron/cron.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { WishlistModule } from './wishlist/wishlist.module';
     CartModule,
     ReportsModule,
     WishlistModule,
+    PaymentsModule,
+    CronModule,
   ],
   controllers: [AppController],
   providers: [AppService],

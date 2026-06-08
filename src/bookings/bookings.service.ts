@@ -122,4 +122,20 @@ export class BookingsService {
       throw new InternalServerErrorException('Failed to cancel booking');
     }
   }
+
+  async complete(id: string) {
+    try {
+      const { rows } = await this.pool.query(
+        'UPDATE bookings SET status = $1, work_completed_date = NOW() WHERE id = $2 RETURNING *',
+        ['Completed', id]
+      );
+      if (rows.length === 0) {
+        return { success: false, message: 'Booking not found' };
+      }
+      return { success: true, booking: rows[0] };
+    } catch (error) {
+      console.error('Error completing booking:', error);
+      throw new InternalServerErrorException('Failed to complete booking');
+    }
+  }
 }

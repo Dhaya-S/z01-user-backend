@@ -1,9 +1,13 @@
 import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
+import { PaymentsService } from '../payments/payments.service';
 
 @Controller('bookings')
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(
+    private readonly bookingsService: BookingsService,
+    private readonly paymentsService: PaymentsService
+  ) {}
 
   @Post()
   async create(@Body() body: any) {
@@ -26,6 +30,16 @@ export class BookingsController {
   @Post(':id/cancel')
   async cancel(@Param('id') id: string, @Body() body: { reason: string }) {
     const result = await this.bookingsService.cancel(id, body.reason);
+    return result;
+  }
+
+  @Post(':id/complete')
+  async complete(@Param('id') id: string) {
+    const result = await this.bookingsService.complete(id);
+    if (result.success) {
+      // Trigger Razorpay route transfer with 7-day hold
+      await this.paymentsService.createTransferOnCompletion(id);
+    }
     return result;
   }
 }

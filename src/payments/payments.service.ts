@@ -46,9 +46,9 @@ export class PaymentsService {
           const depositPercentage = booking.deposit_percentage || 100;
           vendorDepositAmount = (Number(booking.total_amount) * Number(depositPercentage)) / 100;
         }
-        
         depositAmountsMap.set(bId, vendorDepositAmount);
-        totalAmountToCharge += vendorDepositAmount; // ONLY charge deposit amount
+        const platformFee = vendorDepositAmount * 0.10;
+        totalAmountToCharge += vendorDepositAmount + platformFee;
       }
 
       if (totalAmountToCharge === 0) throw new NotFoundException('Bookings not found');

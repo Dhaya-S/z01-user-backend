@@ -15,6 +15,8 @@ const Razorpay = require('razorpay');
       useFactory: (configService: ConfigService) => {
         const keyId = configService.get<string>('RAZORPAY_KEY_ID')?.trim();
         const keySecret = configService.get<string>('RAZORPAY_KEY_SECRET')?.trim();
+        console.log('Initializing Razorpay with keyId:', keyId?.substring(0, 5), 'len:', keyId?.length);
+        console.log('keySecret:', keySecret?.substring(0, 5), 'len:', keySecret?.length);
         if (!keyId || !keySecret) {
           console.warn('Razorpay keys not configured properly');
           return null;

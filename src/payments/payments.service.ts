@@ -80,7 +80,10 @@ export class PaymentsService {
       };
     } catch (error) {
       console.error('Error creating Razorpay order:', error);
-      throw new InternalServerErrorException(error?.message || error?.error?.description || 'Failed to create payment order');
+      const kId = process.env.RAZORPAY_KEY_ID?.trim();
+      throw new InternalServerErrorException(
+        `Razorpay Error: ${error?.error?.description || error?.message}. KeyID: ${kId?.substring(0, 5)}... (len: ${kId?.length}). Secret len: ${process.env.RAZORPAY_KEY_SECRET?.trim()?.length}`
+      );
     }
   }
 

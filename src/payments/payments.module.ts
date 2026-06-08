@@ -3,7 +3,7 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
 import { DatabaseModule } from '../database/database.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import * as Razorpay from 'razorpay';
+const Razorpay = require('razorpay');
 
 @Module({
   imports: [DatabaseModule, ConfigModule],

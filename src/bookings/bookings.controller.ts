@@ -37,7 +37,7 @@ export class BookingsController {
   async complete(@Param('id') id: string) {
     const result = await this.bookingsService.complete(id);
     if (result.success) {
-      // Trigger Razorpay route transfer with 7-day hold
+      // Trigger Razorpay route transfer immediately to vendor
       await this.paymentsService.createTransferOnCompletion(id);
     }
     return result;

@@ -179,16 +179,13 @@ export class PaymentsService {
       const transferAmount = Number(booking.deposit_amount);
       const transferInPaise = Math.round(transferAmount * 100);
 
-      const holdUntil = Math.floor((Date.now() + 7 * 24 * 60 * 60 * 1000) / 1000); // 7 days from now in unix seconds
-
       const transfer = await this.razorpay.payments.transfer(booking.razorpay_payment_id, {
         transfers: [
           {
             account: booking.razorpay_account_id,
             amount: transferInPaise,
             currency: 'INR',
-            on_hold: true,
-            hold_until: holdUntil
+            on_hold: false
           }
         ]
       });

@@ -199,4 +199,38 @@ export class PaymentsService {
       throw new InternalServerErrorException('Failed to create route transfer');
     }
   }
+
+  async refundBookingIfPaid(bookingId: string) {
+    if (!this.razorpay) {
+      console.warn('Razorpay not configured. Skipping refund.');
+      return { success: false, message: 'Razorpay is not configured' };
+    }
+
+    try {
+      const { rows } = await this.pool.query(
+        'SELECT razorpay_payment_id, payment_status FROM bookings WHERE id = $1',
+        [bookingId]
+      );
+
+      if (rows.length === 0) return { success: false, message: 'Booking not found' };
+      
+      const booking = rows[0];
+      if (booking.payment_status === 'paid' && booking.razorpay_payment_id) {
+        // Issue full refund for the payment
+        const refund = await this.razorpay.payments.refund(booking.razorpay_payment_id);
+        
+        // Update database
+        await this.pool.query(
+          'UPDATE bookings SET payment_status = $1, razorpay_refund_id = $2 WHERE id = $3',
+          ['refunded', refund.id, bookingId]
+        );
+
+        return { success: true, refundId: refund.id };
+      }
+      return { success: false, message: 'Booking not paid, no refund required' };
+    } catch (error: any) {
+      console.error(`Razorpay refund failed for booking ${bookingId}:`, error?.message || error);
+      return { success: false, message: 'Refund API call failed' };
+    }
+  }
 }

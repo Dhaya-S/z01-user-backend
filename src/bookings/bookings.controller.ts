@@ -30,6 +30,10 @@ export class BookingsController {
   @Post(':id/cancel')
   async cancel(@Param('id') id: string, @Body() body: { reason: string }) {
     const result = await this.bookingsService.cancel(id, body.reason);
+    if (result.success) {
+      // Trigger automatic Razorpay refund if the booking was already paid
+      await this.paymentsService.refundBookingIfPaid(id);
+    }
     return result;
   }
 

@@ -38,7 +38,12 @@ export class BookingsController {
     const result = await this.bookingsService.complete(id);
     if (result.success) {
       // Trigger Razorpay route transfer immediately to vendor
-      await this.paymentsService.createTransferOnCompletion(id);
+      try {
+        await this.paymentsService.createTransferOnCompletion(id);
+      } catch (error: any) {
+        console.error(`Razorpay transfer failed for booking ${id}:`, error?.message || error);
+        // Do not fail the completion for the user
+      }
     }
     return result;
   }

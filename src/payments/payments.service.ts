@@ -216,8 +216,8 @@ export class PaymentsService {
       
       const booking = rows[0];
       if (booking.payment_status === 'paid' && booking.razorpay_payment_id) {
-        // Issue full refund for the payment
-        const refund = await this.razorpay.payments.refund(booking.razorpay_payment_id);
+        // Issue full refund for the payment instantly
+        const refund = await this.razorpay.payments.refund(booking.razorpay_payment_id, { speed: 'optimum' });
         
         // Update database
         await this.pool.query(

@@ -135,19 +135,14 @@ export class PaymentsService {
         }
       };
 
-      // Depending on razorpay sdk version, it might be beta accounts or accounts
-      // if this fails we fall back to manual handling or ignore. 
-      // For this plan, we mock it or use standard SDK
-      // const account = await this.razorpay.accounts.create(accountData);
-      
-      // MOCK implementation for testing purposes
-      const mockAccountId = 'acc_' + Math.random().toString(36).substring(7);
+      // Use Razorpay SDK to create the linked account
+      const account = await this.razorpay.accounts.create(accountData);
       
       await this.pool.query(
         'UPDATE vendors SET razorpay_account_id = $1 WHERE id = $2',
-        [mockAccountId, vendorId]
+        [account.id, vendorId]
       );
-      return mockAccountId;
+      return account.id;
     } catch (error) {
       console.error('Failed to create Razorpay Linked Account:', error);
       // We don't throw to not block bank detail updates

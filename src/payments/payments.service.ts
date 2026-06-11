@@ -36,7 +36,9 @@ export class PaymentsService {
         const booking = rows[0];
         
         let vendorDepositAmount = 0;
-        if (booking.vendor_specified_deposit && Number(booking.vendor_specified_deposit) > 0) {
+        if (booking.deposit_amount && Number(booking.deposit_amount) > 0) {
+          vendorDepositAmount = Number(booking.deposit_amount);
+        } else if (booking.vendor_specified_deposit && Number(booking.vendor_specified_deposit) > 0) {
           vendorDepositAmount = Number(booking.vendor_specified_deposit);
         } else {
           const depositPercentage = booking.deposit_percentage || 100;
@@ -221,8 +223,8 @@ export class PaymentsService {
         
         // Update database
         await this.pool.query(
-          'UPDATE bookings SET payment_status = $1, razorpay_refund_id = $2 WHERE id = $3',
-          ['refunded', refund.id, bookingId]
+          'UPDATE bookings SET payment_status = $1 WHERE id = $2',
+          ['refunded', bookingId]
         );
 
         return { success: true, refundId: refund.id };
